@@ -78,17 +78,9 @@
       // 👉 начальный поворот — регулируй тут
       plane.rotation.x = -0.6; // наклон по вертикали
       plane.rotation.y = -0.5; // поворот "боком"
-      plane.rotation.z = -0.5;  // наклон по плоскости
+      plane.rotation.z = -0.5; // наклон по плоскости
 
       scene.add(plane);
-
-      // 👇 мышиное покачивание
-      document.addEventListener("mousemove", e => {
-        const x = (e.clientX / window.innerWidth) - 0.5;
-        const y = (e.clientY / window.innerHeight) - 0.5;
-        plane.rotation.y = -0.1 + x * 0.1;
-        plane.rotation.x = -0.2 + y * 0.1;
-      });
 
       function animate(time) {
         requestAnimationFrame(animate);
