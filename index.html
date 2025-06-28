@@ -2,16 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Floating Image Shader</title>
+  <title>Floating Image with Scroll</title>
   <style>
-    body, html {
+    html, body {
       margin: 0;
-      padding: 0;
-      overflow: hidden;
+      height: 200vh; /* добавляем высоту для скролла */
+      overflow-y: scroll;
       background: #000;
     }
     canvas {
       display: block;
+      position: fixed;
+      top: 0;
+      left: 0;
     }
   </style>
 </head>
@@ -70,6 +73,14 @@
     function animate() {
       requestAnimationFrame(animate);
       uniforms.uTime.value = clock.getElapsedTime();
+
+      const scrollY = window.scrollY;
+      const scrollPercent = Math.min(scrollY / window.innerHeight, 1);
+
+      // Плавное выравнивание при скролле
+      mesh.rotation.x = 0.3 - 0.3 * scrollPercent; // от наклона 0.3 до 0
+      mesh.position.y = -0.5 * scrollPercent; // мягкое опускание
+
       renderer.render(scene, camera);
     }
 
