@@ -2,34 +2,38 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Floating Image with Scroll</title>
+  <title>Floating Image with Scroll & Mouse Tilt</title>
   <style>
     html, body {
       margin: 0;
-      height: 200vh; /* добавляем высоту для скролла */
+      height: 200vh;
       overflow-y: scroll;
       background: #000;
+      cursor: default;
     }
     canvas {
       display: block;
       position: fixed;
       top: 0;
       left: 0;
+      pointer-events: none;
     }
   </style>
 </head>
 <body>
   <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
   <script>
+    // Инициализация сцены
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.z = 2;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setClearColor(0x000000, 0); // прозрачный фон
+    renderer.setClearColor(0x000000, 0); // Прозрачный фон
     document.body.appendChild(renderer.domElement);
 
+    // Геометрия и текстура
     const geometry = new THREE.PlaneGeometry(2, 1.2, 64, 64);
     const loader = new THREE.TextureLoader();
     const texture = loader.load('https://optim.tildacdn.pub/tild3266-3731-4934-a561-363134373638/-/format/webp/eve-NLZcjEWBeyE-unsp.jpg.webp');
@@ -70,6 +74,19 @@
 
     const clock = new THREE.Clock();
 
+    // Мышь
+    let targetRotX = 0;
+    let targetRotY = 0;
+
+    document.addEventListener('mousemove', (e) => {
+      const x = e.clientX / window.innerWidth;
+      const y = e.clientY / window.innerHeight;
+
+      targetRotY = (x - 0.5) * 0.2;
+      targetRotX = (y - 0.5) * 0.2;
+    });
+
+    // Анимация
     function animate() {
       requestAnimationFrame(animate);
       uniforms.uTime.value = clock.getElapsedTime();
@@ -77,15 +94,21 @@
       const scrollY = window.scrollY;
       const scrollPercent = Math.min(scrollY / window.innerHeight, 1);
 
-      // Плавное выравнивание при скролле
-      mesh.rotation.x = 0.3 - 0.3 * scrollPercent; // от наклона 0.3 до 0
-      mesh.position.y = -0.5 * scrollPercent; // мягкое опускание
+      const baseRotX = 0.3 - 0.3 * scrollPercent;
+      const baseY = -0.5 * scrollPercent;
+
+      mesh.rotation.x = baseRotX + (targetRotX - mesh.rotation.x) * 0.05;
+      mesh.rotation.y = -0.3 + (targetRotY - mesh.rotation.y) * 0.05;
+      mesh.rotation.z = 0.1; // постоянный лёгкий наклон по Z
+
+      mesh.position.y = baseY;
 
       renderer.render(scene, camera);
     }
 
     animate();
 
+    // Адаптив
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
