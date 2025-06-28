@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Floating Image Shader</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #000;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
+  <script>
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.z = 2;
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0x000000, 0); // прозрачный фон
+    document.body.appendChild(renderer.domElement);
+
+    const geometry = new THREE.PlaneGeometry(2, 1.2, 64, 64);
+    const loader = new THREE.TextureLoader();
+    const texture = loader.load('https://optim.tildacdn.pub/tild3266-3731-4934-a561-363134373638/-/format/webp/eve-NLZcjEWBeyE-unsp.jpg.webp');
+
+    const uniforms = {
+      uTime: { value: 0.0 },
+      uTexture: { value: texture }
+    };
+
+    const material = new THREE.ShaderMaterial({
+      uniforms: uniforms,
+      vertexShader: `
+        uniform float uTime;
+        varying vec2 vUv;
+
+        void main() {
+          vUv = uv;
+          vec3 pos = position;
+          pos.z += sin(pos.y * 6.0 + uTime * 2.0) * 0.05;
+          pos.z += cos(pos.x * 6.0 + uTime * 1.5) * 0.05;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+        }
+      `,
+      fragmentShader: `
+        varying vec2 vUv;
+        uniform sampler2D uTexture;
+
+        void main() {
+          gl_FragColor = texture2D(uTexture, vUv);
+        }
+      `,
+      side: THREE.DoubleSide,
+      transparent: true
+    });
+
+    const mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh);
+
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      uniforms.uTime.value = clock.getElapsedTime();
+      renderer.render(scene, camera);
+    }
+
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
