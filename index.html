@@ -1,111 +1,82 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Floating Image Shader</title>
-  <style>
-    html, body {
-      margin: 0;
-      overflow: hidden;
-      height: 100%;
-      background: transparent; /* ✅ Прозрачный фон */
-    }
-    canvas {
-      display: block;
-    }
-  </style>
-</head>
-<body>
-  <!-- ✅ Подключаем Three.js -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script>
-    // ✅ Сцена, камера, рендерер с прозрачностью
-    let scene = new THREE.Scene();
-    let camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
-    let renderer = new THREE.WebGLRenderer({alpha: true, antialias: true});
-    renderer.setClearColor(0x000000, 0); // ✅ Прозрачный фон
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
+<div id="shader-wrapper" style="width: 100%; height: 600px; position: relative; overflow: hidden;">
+  <canvas id="shader-canvas"></canvas>
+</div>
 
-    camera.position.z = 2.5;
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+  const wrapper = document.getElementById('shader-wrapper');
+  const canvas = document.getElementById('shader-canvas');
 
-    const loader = new THREE.TextureLoader();
-    loader.load(
-      // ✅ Замени при необходимости ссылку на свою картинку
-      "https://optim.tildacdn.pub/tild3266-3731-4934-a561-363134373638/-/format/webp/eve-NLZcjEWBeyE-unsp.jpg.webp", 
-      texture => {
-        const geometry = new THREE.PlaneGeometry(2, 2, 40, 40);
-        const material = new THREE.ShaderMaterial({
-          uniforms: {
-            time: { value: 0 },
-            mouse: { value: new THREE.Vector2(0.5, 0.5) },
-            texture1: { value: texture }
-          },
-          vertexShader: `
-            uniform float time;
-            uniform vec2 mouse;
-            varying vec2 vUv;
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, wrapper.clientWidth / wrapper.clientHeight, 0.1, 1000);
+  const renderer = new THREE.WebGLRenderer({canvas: canvas, alpha: true, antialias: true});
+  renderer.setSize(wrapper.clientWidth, wrapper.clientHeight);
+  renderer.setClearColor(0x000000, 0); // прозрачный фон
 
-            void main() {
-              vUv = uv;
-              vec3 pos = position;
+  camera.position.z = 2.5;
 
-              float waveX = sin(pos.y * 5.0 + time * 2.0) * 0.03;
-              float waveY = sin(pos.x * 5.0 + time * 2.0) * 0.03;
+  const loader = new THREE.TextureLoader();
+  loader.load("https://optim.tildacdn.pub/tild3266-3731-4934-a561-363134373638/-/format/webp/eve-NLZcjEWBeyE-unsp.jpg.webp", texture => {
+    const geometry = new THREE.PlaneGeometry(2, 2, 40, 40);
+    const material = new THREE.ShaderMaterial({
+      uniforms: {
+        time: { value: 0 },
+        mouse: { value: new THREE.Vector2(0.5, 0.5) },
+        texture1: { value: texture }
+      },
+      vertexShader: `
+        uniform float time;
+        uniform vec2 mouse;
+        varying vec2 vUv;
 
-              pos.z += waveX + waveY;
-
-              gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
-            }
-          `,
-          fragmentShader: `
-            uniform sampler2D texture1;
-            varying vec2 vUv;
-
-            void main() {
-              gl_FragColor = texture2D(texture1, vUv);
-            }
-          `,
-          side: THREE.DoubleSide,
-          transparent: true // ✅ Шейдерный материал тоже должен быть прозрачным
-        });
-
-        const plane = new THREE.Mesh(geometry, material);
-
-        // 👉 Здесь настраивается изометрия — наклон картинки
-        plane.rotation.x = -0.8;  // Наклон вперёд-назад
-        plane.rotation.y = -0.5;  // Влево-вправо
-        plane.rotation.z = 0.8;   // Поворот по плоскости
-
-        scene.add(plane);
-
-        // 👇 Мягкие покачивания от движения мыши
-        document.addEventListener("mousemove", e => {
-          const x = (e.clientX / window.innerWidth) - 0.5;
-          const y = (e.clientY / window.innerHeight) - 0.5;
-
-          // ❗ Здесь можно чуть уменьшить влияние мыши, если нужно
-          plane.rotation.y = -0.5 + x * 0.3;
-          plane.rotation.x = -0.8 + y * 0.3;
-        });
-
-        // 🔁 Основной цикл анимации
-        function animate(time) {
-          requestAnimationFrame(animate);
-          material.uniforms.time.value = time * 0.001;
-          renderer.render(scene, camera);
+        void main() {
+          vUv = uv;
+          vec3 pos = position;
+          float waveX = sin(pos.y * 5.0 + time * 2.0) * 0.03;
+          float waveY = sin(pos.x * 5.0 + time * 2.0) * 0.03;
+          pos.z += waveX + waveY;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
         }
-
-        animate();
-      }
-    );
-
-    // 📏 Перерасчёт при изменении размера окна
-    window.addEventListener("resize", () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      `,
+      fragmentShader: `
+        uniform sampler2D texture1;
+        varying vec2 vUv;
+        void main() {
+          gl_FragColor = texture2D(texture1, vUv);
+        }
+      `,
+      side: THREE.DoubleSide,
+      transparent: true
     });
-  </script>
-</body>
-</html>
+
+    const plane = new THREE.Mesh(geometry, material);
+    plane.rotation.x = -0.8;
+    plane.rotation.y = -0.5;
+    plane.rotation.z = 0.8;
+
+    scene.add(plane);
+
+    document.addEventListener("mousemove", e => {
+      const x = (e.clientX / window.innerWidth) - 0.5;
+      const y = (e.clientY / window.innerHeight) - 0.5;
+      plane.rotation.y = -0.5 + x * 0.3;
+      plane.rotation.x = -0.8 + y * 0.3;
+    });
+
+    function animate(time) {
+      requestAnimationFrame(animate);
+      material.uniforms.time.value = time * 0.001;
+      renderer.render(scene, camera);
+    }
+    animate();
+  });
+
+  // Обновление размера при ресайзе
+  window.addEventListener("resize", () => {
+    const width = wrapper.clientWidth;
+    const height = wrapper.clientHeight;
+    renderer.setSize(width, height);
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+  });
+</script>
