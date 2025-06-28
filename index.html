@@ -2,114 +2,94 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Floating Image with Scroll & Mouse Tilt</title>
+  <title>Floating Image Shader</title>
   <style>
     html, body {
       margin: 0;
-      height: 200vh;
-      overflow-y: scroll;
-      background: #000;
-      cursor: default;
+      overflow: hidden;
+      height: 100%;
+      background: black;
     }
     canvas {
       display: block;
-      position: fixed;
-      top: 0;
-      left: 0;
-      pointer-events: none;
     }
   </style>
 </head>
 <body>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
-    // Инициализация сцены
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.z = 2;
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    let scene = new THREE.Scene();
+    let camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
+    let renderer = new THREE.WebGLRenderer({alpha: true});
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setClearColor(0x000000, 0); // Прозрачный фон
     document.body.appendChild(renderer.domElement);
 
-    // Геометрия и текстура
-    const geometry = new THREE.PlaneGeometry(2, 1.2, 64, 64);
+    camera.position.z = 2.5;
+
     const loader = new THREE.TextureLoader();
-    const texture = loader.load('https://optim.tildacdn.pub/tild3266-3731-4934-a561-363134373638/-/format/webp/eve-NLZcjEWBeyE-unsp.jpg.webp');
+    loader.load("https://optim.tildacdn.pub/tild3266-3731-4934-a561-363134373638/-/format/webp/eve-NLZcjEWBeyE-unsp.jpg.webp", texture => {
+      const geometry = new THREE.PlaneGeometry(2, 2, 40, 40);
+      const material = new THREE.ShaderMaterial({
+        uniforms: {
+          time: { value: 0 },
+          mouse: { value: new THREE.Vector2(0.5, 0.5) },
+          texture1: { value: texture }
+        },
+        vertexShader: `
+          uniform float time;
+          uniform vec2 mouse;
+          varying vec2 vUv;
 
-    const uniforms = {
-      uTime: { value: 0.0 },
-      uTexture: { value: texture }
-    };
+          void main() {
+            vUv = uv;
+            vec3 pos = position;
 
-    const material = new THREE.ShaderMaterial({
-      uniforms: uniforms,
-      vertexShader: `
-        uniform float uTime;
-        varying vec2 vUv;
+            float waveX = sin(pos.y * 5.0 + time * 2.0) * 0.03;
+            float waveY = sin(pos.x * 5.0 + time * 2.0) * 0.03;
 
-        void main() {
-          vUv = uv;
-          vec3 pos = position;
-          pos.z += sin(pos.y * 6.0 + uTime * 2.0) * 0.05;
-          pos.z += cos(pos.x * 6.0 + uTime * 1.5) * 0.05;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
-        }
-      `,
-      fragmentShader: `
-        varying vec2 vUv;
-        uniform sampler2D uTexture;
+            pos.z += waveX + waveY;
 
-        void main() {
-          gl_FragColor = texture2D(uTexture, vUv);
-        }
-      `,
-      side: THREE.DoubleSide,
-      transparent: true
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform sampler2D texture1;
+          varying vec2 vUv;
+
+          void main() {
+            gl_FragColor = texture2D(texture1, vUv);
+          }
+        `,
+        side: THREE.DoubleSide
+      });
+
+      const plane = new THREE.Mesh(geometry, material);
+
+      // 👉 Вот здесь можно задать изначальный угол поворота картинки:
+      plane.rotation.x = -0.25; // Наклон вперёд/назад
+      plane.rotation.y = 0.25;  // Поворот "боком" (Y = влево/вправо)
+      plane.rotation.z = -0.1;  // Поворот по плоскости
+
+      scene.add(plane);
+
+      // 👇 Покачивания от мышки
+      document.addEventListener("mousemove", e => {
+        const x = (e.clientX / window.innerWidth) - 0.5;
+        const y = (e.clientY / window.innerHeight) - 0.5;
+        plane.rotation.y = 0.25 + x * 0.3;
+        plane.rotation.x = -0.25 + y * 0.3;
+      });
+
+      function animate(time) {
+        requestAnimationFrame(animate);
+        material.uniforms.time.value = time * 0.001;
+        renderer.render(scene, camera);
+      }
+
+      animate();
     });
 
-    const mesh = new THREE.Mesh(geometry, material);
-    scene.add(mesh);
-
-    const clock = new THREE.Clock();
-
-    // Мышь
-    let targetRotX = 0;
-    let targetRotY = 0;
-
-    document.addEventListener('mousemove', (e) => {
-      const x = e.clientX / window.innerWidth;
-      const y = e.clientY / window.innerHeight;
-
-      targetRotY = (x - 0.5) * 0.2;
-      targetRotX = (y - 0.5) * 0.2;
-    });
-
-    // Анимация
-    function animate() {
-      requestAnimationFrame(animate);
-      uniforms.uTime.value = clock.getElapsedTime();
-
-      const scrollY = window.scrollY;
-      const scrollPercent = Math.min(scrollY / window.innerHeight, 1);
-
-      const baseRotX = 0.3 - 0.3 * scrollPercent;
-      const baseY = -0.5 * scrollPercent;
-
-      mesh.rotation.x = baseRotX + (targetRotX - mesh.rotation.x) * 0.05;
-      mesh.rotation.y = -0.3 + (targetRotY - mesh.rotation.y) * 0.05;
-      mesh.rotation.z = 0.1; // постоянный лёгкий наклон по Z
-
-      mesh.position.y = baseY;
-
-      renderer.render(scene, camera);
-    }
-
-    animate();
-
-    // Адаптив
-    window.addEventListener('resize', () => {
+    window.addEventListener("resize", () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
