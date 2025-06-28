@@ -26,6 +26,14 @@
 <body>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
+    // Читаем URL-параметр `img`
+    function getImageUrl() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("img") || "https://optim.tildacdn.pub/tild3266-3731-4934-a561-363134373638/-/format/webp/eve-NLZcjEWBeyE-unsp.jpg.webp";
+    }
+
+    const imageUrl = getImageUrl();
+
     let scene = new THREE.Scene();
     let camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
     let renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
@@ -36,17 +44,15 @@
     camera.position.z = 2.5;
 
     const loader = new THREE.TextureLoader();
-    loader.load("https://optim.tildacdn.pub/tild3266-3731-4934-a561-363134373638/-/format/webp/eve-NLZcjEWBeyE-unsp.jpg.webp", texture => {
+    loader.load(imageUrl, texture => {
       const geometry = new THREE.PlaneGeometry(2, 2, 40, 40);
       const material = new THREE.ShaderMaterial({
         uniforms: {
           time: { value: 0 },
-          mouse: { value: new THREE.Vector2(0.5, 0.5) },
           texture1: { value: texture }
         },
         vertexShader: `
           uniform float time;
-          uniform vec2 mouse;
           varying vec2 vUv;
 
           void main() {
@@ -75,10 +81,10 @@
 
       const plane = new THREE.Mesh(geometry, material);
 
-      // 👉 начальный поворот — регулируй тут
-      plane.rotation.x = -0.6; // наклон по вертикали
-      plane.rotation.y = -0.5; // поворот "боком"
-      plane.rotation.z = -0.5; // наклон по плоскости
+      // 👉 начальный поворот
+      plane.rotation.x = -0.6;
+      plane.rotation.y = -0.5;
+      plane.rotation.z = -0.5;
 
       scene.add(plane);
 
