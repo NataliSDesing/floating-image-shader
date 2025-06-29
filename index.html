@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Wave Lighting Effect</title>
+  <title>Wave Light & Shadow</title>
   <style>
     html, body {
       margin: 0;
@@ -44,17 +44,18 @@
       const imgRatio = texture.image.width / texture.image.height;
       const height = 2;
       const width = height * imgRatio;
-      const geometry = new THREE.PlaneGeometry(width, height, 40, 40);
+      const geometry = new THREE.PlaneGeometry(width, height, 100, 100);
 
       const material = new THREE.ShaderMaterial({
         uniforms: {
-          time: { value: 0 },
-          texture1: { value: texture }
+          time: { value: 0.0 },
+          texture1: { value: texture },
+          lightDir: { value: new THREE.Vector3(-0.5, 0.5, 1).normalize() } // 👈 СВЕТ С ВЕРХНЕГО ЛЕВОГО УГЛА
         },
         vertexShader: `
           uniform float time;
           varying vec2 vUv;
-          varying float brightness;
+          varying vec3 vNormal;
 
           void main() {
             vUv = uv;
@@ -65,21 +66,26 @@
 
             pos.z += waveX + waveY;
 
-            // "Наклон" как псевдо-нормаль волны — влияет на освещение
-            brightness = 0.5 + 0.5 * (waveX - waveY); // значение от 0 до 1
+            vNormal = normalize(vec3(
+              -0.3 * cos(pos.y * 5.0 + time * 2.0),
+              -0.3 * cos(pos.x * 5.0 + time * 2.0),
+              1.0
+            ));
 
             gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
           }
         `,
         fragmentShader: `
           uniform sampler2D texture1;
+          uniform vec3 lightDir;
           varying vec2 vUv;
-          varying float brightness;
+          varying vec3 vNormal;
 
           void main() {
             vec4 color = texture2D(texture1, vUv);
-            vec3 light = color.rgb * brightness;
-            gl_FragColor = vec4(light, color.a);
+            float light = dot(normalize(vNormal), lightDir);
+            light = clamp(light, 0.4, 1.2);
+            gl_FragColor = vec4(color.rgb * light, color.a);
           }
         `,
         side: THREE.DoubleSide,
@@ -88,7 +94,7 @@
 
       const plane = new THREE.Mesh(geometry, material);
 
-      // Наклон по оси для изометрии
+      // Изометрия — тут можно подбирать угол вручную
       plane.rotation.x = -0.6;
       plane.rotation.y = -0.5;
       plane.rotation.z = -0.5;
@@ -96,9 +102,9 @@
       scene.add(plane);
 
       function animate(time) {
-        requestAnimationFrame(animate);
         material.uniforms.time.value = time * 0.001;
         renderer.render(scene, camera);
+        requestAnimationFrame(animate);
       }
 
       animate();
