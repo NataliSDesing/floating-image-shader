@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Floating Image Shader</title>
+  <title>Wave Lighting Effect</title>
   <style>
     html, body {
       margin: 0;
@@ -54,7 +54,7 @@
         vertexShader: `
           uniform float time;
           varying vec2 vUv;
-          varying float waveEffect;
+          varying float brightness;
 
           void main() {
             vUv = uv;
@@ -64,7 +64,9 @@
             float waveY = sin(pos.x * 5.0 + time * 2.0) * 0.03;
 
             pos.z += waveX + waveY;
-            waveEffect = waveX + waveY;
+
+            // "Наклон" как псевдо-нормаль волны — влияет на освещение
+            brightness = 0.5 + 0.5 * (waveX - waveY); // значение от 0 до 1
 
             gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
           }
@@ -72,12 +74,12 @@
         fragmentShader: `
           uniform sampler2D texture1;
           varying vec2 vUv;
-          varying float waveEffect;
+          varying float brightness;
 
           void main() {
             vec4 color = texture2D(texture1, vUv);
-            float shadow = clamp(-waveEffect * 5.0, 0.0, 0.3); // искусственная тень
-            gl_FragColor = vec4(color.rgb - shadow, color.a);
+            vec3 light = color.rgb * brightness;
+            gl_FragColor = vec4(light, color.a);
           }
         `,
         side: THREE.DoubleSide,
@@ -86,7 +88,7 @@
 
       const plane = new THREE.Mesh(geometry, material);
 
-      // начальный наклон
+      // Наклон по оси для изометрии
       plane.rotation.x = -0.6;
       plane.rotation.y = -0.5;
       plane.rotation.z = -0.5;
