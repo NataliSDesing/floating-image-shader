@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Wave Light & Shadow</title>
+  <title>Floating Image Shader</title>
   <style>
     html, body {
       margin: 0;
@@ -15,6 +15,7 @@
       justify-content: center;
       align-items: center;
     }
+
     canvas {
       display: block;
       max-width: 100%;
@@ -26,31 +27,34 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(
-      45,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      1000
-    );
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.z = 3.2; // ✅ чуть дальше отодвинули камеру
+
     const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setClearColor(0x000000, 0);
     document.body.appendChild(renderer.domElement);
 
-    camera.position.z = 2.5;
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(-1, 1, 1); // ✅ свет из верхнего левого угла
+    scene.add(light);
+
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.5); // мягкий свет
+    scene.add(ambientLight);
 
     const loader = new THREE.TextureLoader();
-    loader.load("https://optim.tildacdn.pub/tild3266-3731-4934-a561-363134373638/-/format/webp/eve-NLZcjEWBeyE-unsp.jpg.webp", texture => {
+    const imageUrl = "https://optim.tildacdn.pub/tild3266-3731-4934-a561-363134373638/-/format/webp/eve-NLZcjEWBeyE-unsp.jpg.webp";
+
+    loader.load(imageUrl, texture => {
       const imgRatio = texture.image.width / texture.image.height;
-      const height = 2;
+      const height = 1.8; // ✅ уменьшили высоту, чтобы не обрезалось
       const width = height * imgRatio;
-      const geometry = new THREE.PlaneGeometry(width, height, 100, 100);
+      const geometry = new THREE.PlaneGeometry(width, height, 40, 40);
 
       const material = new THREE.ShaderMaterial({
         uniforms: {
-          time: { value: 0.0 },
-          texture1: { value: texture },
-          lightDir: { value: new THREE.Vector3(-0.5, 0.5, 1).normalize() } // 👈 СВЕТ С ВЕРХНЕГО ЛЕВОГО УГЛА
+          time: { value: 0 },
+          texture1: { value: texture }
         },
         vertexShader: `
           uniform float time;
@@ -66,26 +70,22 @@
 
             pos.z += waveX + waveY;
 
-            vNormal = normalize(vec3(
-              -0.3 * cos(pos.y * 5.0 + time * 2.0),
-              -0.3 * cos(pos.x * 5.0 + time * 2.0),
-              1.0
-            ));
+            vNormal = normal;
 
             gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
           }
         `,
         fragmentShader: `
           uniform sampler2D texture1;
-          uniform vec3 lightDir;
           varying vec2 vUv;
           varying vec3 vNormal;
 
           void main() {
-            vec4 color = texture2D(texture1, vUv);
-            float light = dot(normalize(vNormal), lightDir);
-            light = clamp(light, 0.4, 1.2);
-            gl_FragColor = vec4(color.rgb * light, color.a);
+            vec3 lightDir = normalize(vec3(-1.0, 1.0, 1.0));
+            float lighting = dot(normalize(vNormal), lightDir);
+            lighting = clamp(lighting, 0.5, 1.0); // мягкая тень
+            vec4 texColor = texture2D(texture1, vUv);
+            gl_FragColor = vec4(texColor.rgb * lighting, texColor.a);
           }
         `,
         side: THREE.DoubleSide,
@@ -94,7 +94,7 @@
 
       const plane = new THREE.Mesh(geometry, material);
 
-      // Изометрия — тут можно подбирать угол вручную
+      // ✅ начальный поворот
       plane.rotation.x = -0.6;
       plane.rotation.y = -0.5;
       plane.rotation.z = -0.5;
@@ -102,9 +102,9 @@
       scene.add(plane);
 
       function animate(time) {
+        requestAnimationFrame(animate);
         material.uniforms.time.value = time * 0.001;
         renderer.render(scene, camera);
-        requestAnimationFrame(animate);
       }
 
       animate();
